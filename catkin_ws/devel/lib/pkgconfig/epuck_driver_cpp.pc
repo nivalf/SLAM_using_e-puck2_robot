@@ -1,0 +1,8 @@
+prefix=/home/flavin/Documents/SLAM_using_e-puck2_robot/catkin_ws/devel
+
+Name: epuck_driver_cpp
+Description: Description of epuck_driver_cpp
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
