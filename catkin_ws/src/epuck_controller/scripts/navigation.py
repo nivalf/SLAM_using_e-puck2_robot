@@ -5,9 +5,11 @@ import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Range
 
+DEBUG_MODE = False
 
 DEFAULT_LINEAR_VELOCITY = 5
 DEFAULT_ANGULAR_VELOCITY = 0.8
+THR = 0.02 # Threshold for obstacle detection in meters
 
 prox_values = {}
 cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
@@ -18,13 +20,20 @@ def navigate():
     rate = rospy.Rate(30) # 30hz
     state = 0
 
+    # Wait for the device to be ready
+    rospy.sleep(1)
+
     # moveInCircle()
     while not rospy.is_shutdown():
 
         getProxReadings()
 
+        if DEBUG_MODE:
+            rospy.loginfo("Prox values: %s", prox_values)
+            continue
+
         if state == 0:
-            if not obstacleDetected():
+            if pathClear():
                 rospy.loginfo("Moving forward")
                 moveForward()
                 state = 1
@@ -32,7 +41,11 @@ def navigate():
             if obstacleDetected():
                 rospy.loginfo("Obstacle detected")
                 stop()
-                state = 0
+                state = 2
+        elif state == 2:
+            rospy.loginfo("Turning")
+            turn()
+            state = 0
         else:
             rospy.loginfo("Invalid state: %s", state)
 
@@ -51,10 +64,18 @@ def navigate():
 def obstacleDetected():
     obstacleDetected_ = False
     for value in prox_values.values():
-        if value < 0.02:
+        if value < THR:
             obstacleDetected_ = True
             break
     return obstacleDetected_
+
+def pathClear():
+    pathClear_ = True
+    for value in prox_values.values():
+        if value <  2.4* THR:
+            pathClear_ = False
+            break
+    return pathClear_
 
 # Get the proximity readings and save it to the prox_values dictionary
 def getProxReadings():
@@ -80,6 +101,11 @@ def moveForward(linear_vel = DEFAULT_LINEAR_VELOCITY):
 def moveInCircle(linear_vel = 10, angular_vel = DEFAULT_ANGULAR_VELOCITY):
     # rospy.loginfo("Moving in a circle")
     publishTwistMessage(linear_vel, angular_vel)
+
+# Turn
+def turn(angular_vel = DEFAULT_ANGULAR_VELOCITY):
+    direction = 1 if prox_values[0] + prox_values[1] < prox_values[6] + prox_values[7] else -1
+    publishTwistMessage(0, direction * angular_vel)
 
 # Stop the movement
 def stop():
