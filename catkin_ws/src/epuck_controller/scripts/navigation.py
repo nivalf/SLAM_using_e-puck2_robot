@@ -5,33 +5,41 @@ import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Range
 
+
 DEFAULT_LINEAR_VELOCITY = 5
 DEFAULT_ANGULAR_VELOCITY = 0.8
 
 prox_values = {}
-
 cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
 
 
 def navigate():
     rospy.init_node('navigate', anonymous=True)
     rate = rospy.Rate(30) # 30hz
+    state = 0
 
     # moveInCircle()
     while not rospy.is_shutdown():
-        moveInCircle(3, 0.4)
 
         getProxReadings()
 
-        if obstacleDetected():
-            stop()
+        if state == 0:
+            if not obstacleDetected():
+                moveInCircle(3, 0.4)
+                state = 1
+        elif state == 1:
+            if obstacleDetected():
+                stop()
+                state = 0
+        else:
+            rospy.loginfo("Invalid state: %s", state)
 
 
     #     moveInCircle()
 
         # rospy.spin()
 
-        rospy.loginfo("Prox values: %s", prox_values)
+        # rospy.loginfo("Prox values: %s", prox_values)
 
         rate.sleep()
 
@@ -44,6 +52,7 @@ def obstacleDetected():
         if value < 0.02:
             obstacleDetected_ = True
             break
+    rospy.loginfo("Obstacle detected: %s", obstacleDetected_)
     return obstacleDetected_
 
 # Get the proximity readings and save it to the prox_values dictionary
