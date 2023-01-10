@@ -1,47 +1,14 @@
 #!/usr/bin/env python
-# Software License Agreement (BSD License)
-#
-# Copyright (c) 2008, Willow Garage, Inc.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of Willow Garage, Inc. nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Revision $Id$
-
-## Simple talker demo that listens to std_msgs/Strings published 
-## to the 'chatter' topic
 
 
 import rospy
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Range
 
 DEFAULT_LINEAR_VELOCITY = 5
 DEFAULT_ANGULAR_VELOCITY = 0.8
+
+prox_values = {}
 
 cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
 
@@ -50,20 +17,59 @@ def navigate():
     rospy.init_node('navigate', anonymous=True)
     rate = rospy.Rate(30) # 30hz
 
+    # moveInCircle()
     while not rospy.is_shutdown():
-        moveInCircle()
+        moveInCircle(3, 0.4)
+
+        getProxReadings()
+
+        if obstacleDetected():
+            stop()
+
+
+    #     moveInCircle()
+
+        # rospy.spin()
+
+        rospy.loginfo("Prox values: %s", prox_values)
+
         rate.sleep()
 
 
 # ************************ HELPERS ************************ #
 
+def obstacleDetected():
+    obstacleDetected_ = False
+    for value in prox_values.values():
+        if value < 0.02:
+            obstacleDetected_ = True
+            break
+    return obstacleDetected_
+
+# Get the proximity readings and save it to the prox_values dictionary
+def getProxReadings():
+    rospy.Subscriber("proximity0", Range, proxCallback)
+    rospy.Subscriber("proximity1", Range, proxCallback)
+    rospy.Subscriber("proximity6", Range, proxCallback)
+    rospy.Subscriber("proximity7", Range, proxCallback)
+
+
+def proxCallback(data):
+    saveSensorData(data)
+
+# Save the sensor data to the dictionary
+def saveSensorData(data):
+    sensor_no = int(data.header.frame_id[-1])
+    prox_values[sensor_no] = data.range
 
 # Move in a circle
 def moveInCircle(linear_vel = 10, angular_vel = DEFAULT_ANGULAR_VELOCITY):
+    # rospy.loginfo("Moving in a circle")
     publishTwistMessage(linear_vel, angular_vel)
 
 # Stop the movement
 def stop():
+    rospy.loginfo("Stopping")
     publishTwistMessage(0, 0)
 
 # Publish the twist message
