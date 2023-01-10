@@ -40,21 +40,43 @@
 import rospy
 from geometry_msgs.msg import Twist
 
+DEFAULT_LINEAR_VELOCITY = 5
+DEFAULT_ANGULAR_VELOCITY = 0.8
+
+cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
+
+
 def navigate():
-    cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
     rospy.init_node('navigate', anonymous=True)
     rate = rospy.Rate(30) # 30hz
 
     while not rospy.is_shutdown():
-        twist = Twist()
-        twist.linear.x = 10
-        twist.angular.z = 0.8
-        cmd_vel_pub.publish(twist)
+        moveInCircle()
         rate.sleep()
+
+
+# ************************ HELPERS ************************ #
+
+
+# Move in a circle
+def moveInCircle(linear_vel = 10, angular_vel = DEFAULT_ANGULAR_VELOCITY):
+    publishTwistMessage(linear_vel, angular_vel)
+
+# Stop the movement
+def stop():
+    publishTwistMessage(0, 0)
+
+# Publish the twist message
+def publishTwistMessage(linear_vel, angular_vel):
+    twist = Twist()
+    twist.linear.x = linear_vel
+    twist.angular.z = angular_vel
+    cmd_vel_pub.publish(twist)
+
+# ************************ MAIN ************************ #
 
 if __name__ == '__main__':
     try:
         navigate()
     except rospy.ROSInterruptException:
         pass
-
