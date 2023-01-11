@@ -23,7 +23,7 @@ rgb_leds_pub = rospy.Publisher('mobile_base/rgb_leds', UInt8MultiArray, queue_si
 cmd_leds_pub = rospy.Publisher('mobile_base/cmd_leds', UInt8MultiArray, queue_size=1)
 
 def navigate():
-    rospy.init_node('navigate', anonymous=True)
+    rospy.init_node('navigate')
     rate = rospy.Rate(30) # 30hz
     state = 0
 
@@ -90,6 +90,8 @@ def getProxReadings():
     rospy.Subscriber("proximity0", Range, proxCallback)
     rospy.Subscriber("proximity1", Range, proxCallback)
     rospy.Subscriber("proximity2", Range, proxCallback)
+    rospy.Subscriber("proximity3", Range, proxCallback)
+    rospy.Subscriber("proximity4", Range, proxCallback)
     rospy.Subscriber("proximity5", Range, proxCallback)
     rospy.Subscriber("proximity6", Range, proxCallback)
     rospy.Subscriber("proximity7", Range, proxCallback)
@@ -131,7 +133,7 @@ def publishTwistMessage(linear_vel=0, angular_vel=0):
 
 # Set the LED indication
 # Few LEDs weren't turning on in the hardware and the mapping seemed disoriented.
-# This function is used to set the LEDs in the correct order.
+# This function maps the LEDs correctly to an extent. (The Red of RGB LED 1 doesn't seem to work - Insted green turns on)
 def setLEDIndication(type):
     if type == "pathClear":
         rgb_leds = UInt8MultiArray()
