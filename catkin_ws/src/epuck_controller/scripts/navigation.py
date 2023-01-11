@@ -4,7 +4,7 @@
 import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Range
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, UInt8MultiArray
 
 DEBUG_MODE = False
 
@@ -19,7 +19,8 @@ od_sensors = [0, 1, 6, 7]
 cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
 setpoint_pub = rospy.Publisher('/setpoint', Float64, queue_size=1)
 state_pub = rospy.Publisher('/state', Float64, queue_size=1)
-
+rgb_leds_pub = rospy.Publisher('mobile_base/rgb_leds', UInt8MultiArray, queue_size=1)
+cmd_leds_pub = rospy.Publisher('mobile_base/cmd_leds', UInt8MultiArray, queue_size=1)
 
 def navigate():
     rospy.init_node('navigate', anonymous=True)
@@ -42,10 +43,12 @@ def navigate():
         if state == 0:
             if pathClear():
                 rospy.loginfo("Moving forward...")
+                setLEDIndication("pathClear")
                 moveForward()
                 state = 1
         elif state == 1:
             if obstacleDetected():
+                setLEDIndication("obstacleDetected")
                 rospy.loginfo("Obstacle detected. Truning...")
                 turn()
                 state = 0
@@ -77,7 +80,6 @@ def obstacleDetected():
 def pathClear():
     pathClear_ = True
     for sensor, value in prox.items():
-        rospy.loginfo("Sensor %s: %s", sensor, value)
         if value < 2.4 * THR and sensor in od_sensors:
             pathClear_ = False
             break
@@ -126,6 +128,28 @@ def publishTwistMessage(linear_vel=0, angular_vel=0):
     twist.linear.x = linear_vel
     twist.angular.z = angular_vel
     cmd_vel_pub.publish(twist)
+
+# Set the LED indication
+# Few LEDs weren't turning on in the hardware and the mapping seemed disoriented.
+# This function is used to set the LEDs in the correct order.
+def setLEDIndication(type):
+    if type == "pathClear":
+        rgb_leds = UInt8MultiArray()
+        rgb_leds.data = [100,0,0, 0,0,0, 0,0,0, 100,0,0]
+        rgb_leds_pub.publish(rgb_leds)
+
+        cmd_leds = UInt8MultiArray()
+        cmd_leds.data = [0,0,0,0,0,0]
+        cmd_leds_pub.publish(cmd_leds)
+
+    elif type == "obstacleDetected":
+        rgb_leds = UInt8MultiArray()
+        rgb_leds.data = [0,0,0, 0,0,0, 0,0,100, 0,0,0]
+        rgb_leds_pub.publish(rgb_leds)
+
+        cmd_leds = UInt8MultiArray()
+        cmd_leds.data = [1,0,0,0,0,0]
+        cmd_leds_pub.publish(cmd_leds)
 
 # ************************ MAIN ************************ #
 
