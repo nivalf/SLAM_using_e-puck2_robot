@@ -4,9 +4,10 @@
 import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Range
-from std_msgs.msg import Float64, UInt8MultiArray
+from std_msgs.msg import UInt8MultiArray
+import math
 
-DEFAULT_LINEAR_VELOCITY = 5
+DEFAULT_LINEAR_VELOCITY = 4
 DEFAULT_ANGULAR_VELOCITY = 0.8
 THR = 0.02 # Threshold for obstacle detection in meters
 
@@ -15,8 +16,6 @@ od_sensors = [0, 1, 6, 7]
 
 # Publishers
 cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
-setpoint_pub = rospy.Publisher('/setpoint', Float64, queue_size=1)
-state_pub = rospy.Publisher('/state', Float64, queue_size=1)
 rgb_leds_pub = rospy.Publisher('mobile_base/rgb_leds', UInt8MultiArray, queue_size=1)
 cmd_leds_pub = rospy.Publisher('mobile_base/cmd_leds', UInt8MultiArray, queue_size=1)
 
@@ -27,8 +26,6 @@ def navigate():
 
     # Wait for the device to be ready
     rospy.sleep(2)
-
-    publishSetPoint()
 
 
     while not rospy.is_shutdown():
@@ -44,10 +41,10 @@ def navigate():
         if state == 0:
             traceBoundary()
 
-            # if obstacleDetected():
-            #     setLEDIndication("obstacleDetected")
-            #     state = 1
-            #     rospy.loginfo("Obstacle detected. Turning...")
+            if obstacleDetected():
+                setLEDIndication("obstacleDetected")
+                state = 1
+                rospy.loginfo("Obstacle detected. Turning...")
         elif state == 1:
             turn()
             if pathClear():
@@ -63,18 +60,6 @@ def navigate():
 
 # ************************ HELPERS ************************ #
 
-# Publish the setpoint
-def publishSetPoint(point=3):
-    setPoint = Float64()
-    setPoint.data = point
-    setpoint_pub.publish(setPoint)
-
-# Publish the state
-def publishState(data):
-    state = Float64()
-    state.data = data
-    state_pub.publish(data)
-
 # Check if obstacle detected
 def obstacleDetected():
     obstacleDetected_ = False
@@ -88,12 +73,10 @@ def obstacleDetected():
 def pathClear():
     pathClear_ = True
     for sensor, value in prox.items():
-        if value < 2.4 * THR and sensor in od_sensors:
+        if value < 1.5 * THR and sensor in od_sensors:
             pathClear_ = False
             break
     
-
-    rospy.loginfo('DEV: path clear: %s', pathClear_)
     return pathClear_
 
 # Get the proximity readings and save it to the prox dictionary
@@ -116,16 +99,14 @@ def saveSensorData(data):
     sensor_no = int(data.header.frame_id[-1])
     prox[sensor_no] = data.range
 
-def traceBoundaryCallback(data):
-    rospy.loginfo("PID output: %s (difference: %s)", data.data , 0.03 - prox[2])
-    # publishTwistMessage(DEFAULT_LINEAR_VELOCITY, data.data)
-
 # Trace the boundary of the environment
 def traceBoundary():
-    rospy.loginfo("Proximity: %s", prox)
-    publishState(100 * prox[2])
-    rospy.logdebug("DEV: State published")
-    rospy.Subscriber("control_effort", Float64, traceBoundaryCallback)
+    dist = prox[2]  # Sensor 2 is right side sensor
+    # angular_vel = -math.tan(dist * math.pi/0.05)
+    # angular_vel = 10 if angular_vel > 10 else -10 if angular_vel < -10 else angular_vel
+    angular_vel = 0.7 if dist < 0.01 else .5 if dist < 0.02 else .2 if dist < 0.03 else -0.2 if dist < 0.04 else -0.5 if dist < 0.05 else -0.7
+    rospy.loginfo('DEV: angular vel: %s, dist: %s', angular_vel, dist)
+    publishTwistMessage(DEFAULT_LINEAR_VELOCITY,angular_vel)
 
 # Move forward
 def moveForward(linear_vel = DEFAULT_LINEAR_VELOCITY):
