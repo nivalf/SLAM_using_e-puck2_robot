@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="epuck_controller" type="navigation.py" name="epuck_control" />
+</launch>
