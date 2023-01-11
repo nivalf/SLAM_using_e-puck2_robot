@@ -34,27 +34,17 @@ def navigate():
 
         if state == 0:
             if pathClear():
-                rospy.loginfo("Moving forward")
+                rospy.loginfo("Moving forward...")
                 moveForward()
                 state = 1
         elif state == 1:
             if obstacleDetected():
-                rospy.loginfo("Obstacle detected")
-                stop()
-                state = 2
-        elif state == 2:
-            rospy.loginfo("Turning")
-            turn()
-            state = 0
+                rospy.loginfo("Obstacle detected. Truning...")
+                turn()
+                state = 0
         else:
             rospy.loginfo("Invalid state: %s", state)
 
-
-    #     moveInCircle()
-
-        # rospy.spin()
-
-        # rospy.loginfo("Prox values: %s", prox_values)
 
         rate.sleep()
 
