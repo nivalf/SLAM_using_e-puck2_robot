@@ -1,3 +1,13 @@
 <launch>
     <node pkg="epuck_controller" type="navigation.py" name="epuck_control" />
+
+    <!-- PID Controller -->
+    <node name="boundary_follower_pid" pkg="pid" type="controller" >
+      <param name="Kp" value="5.0" />
+      <param name="Ki" value="0.0" />
+      <param name="Kd" value="0.1" />
+      <param name="upper_limit" value="10" />
+      <param name="lower_limit" value="-10" />
+      <param name="windup_limit" value="10" />
+    </node>
 </launch>
