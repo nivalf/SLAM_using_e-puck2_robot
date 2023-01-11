@@ -12,7 +12,7 @@ DEFAULT_ANGULAR_VELOCITY = 0.8
 THR = 0.02 # Threshold for obstacle detection in meters
 
 prox = {}
-od_sensors = [0, 7]
+od_sensors = [0, 1, 6,  7]
 pc_sensors = [0, 1, 2, 5, 6, 7]
 
 # Publishers
@@ -41,21 +41,17 @@ def navigate():
         setLEDIndication("pathClear")
 
         if state == 0:
-            moveForward()
-            if(obstacleDetected()):
-                setLEDIndication("obstacleDetected")
-                rospy.loginfo("Obstacle detected. Turning Left...")
-                state = 1
-            elif(pointCloudEmpty()):
+            if pathClear():
+                rospy.loginfo("Moving forward...")
                 setLEDIndication("pathClear")
-                rospy.loginfo("Path clear. Turning Right...")
-                state = 2
+                moveForward()
+                state = 1
         elif state == 1:
-            turnLeft()
-            state = 0
-        elif state == 2:
-            turnRight()
-            state = 0
+            if obstacleDetected():
+                setLEDIndication("obstacleDetected")
+                rospy.loginfo("Obstacle detected. Turning...")
+                turn()
+                state = 0
         else:
             rospy.loginfo("Invalid state: %s", state)
 
@@ -98,7 +94,7 @@ def pointCloudEmpty():
 def pathClear():
     pathClear_ = True
     for sensor, value in prox.items():
-        if value < 1.5 * THR and sensor in od_sensors:
+        if value < THR and sensor in od_sensors:
             pathClear_ = False
             break
     
