@@ -12,7 +12,8 @@ DEFAULT_ANGULAR_VELOCITY = 0.8
 THR = 0.02 # Threshold for obstacle detection in meters
 
 prox = {}
-od_sensors = [0, 1, 6, 7]
+od_sensors = [0, 7]
+pc_sensors = [0, 1, 2, 5, 6, 7]
 
 # Publishers
 cmd_vel_pub = rospy.Publisher('mobile_base/cmd_vel', Twist, queue_size=1)
@@ -36,21 +37,25 @@ def navigate():
         if not bool(prox):
             continue
 
+
         setLEDIndication("pathClear")
 
         if state == 0:
-            traceBoundary()
-
-            if obstacleDetected():
+            moveForward()
+            if(obstacleDetected()):
                 setLEDIndication("obstacleDetected")
+                rospy.loginfo("Obstacle detected. Turning Left...")
                 state = 1
-                rospy.loginfo("Obstacle detected. Turning...")
-        elif state == 1:
-            turn()
-            if pathClear():
+            elif(pointCloudEmpty()):
                 setLEDIndication("pathClear")
-                rospy.loginfo("Path clear: Moving forward...")
-                state = 0
+                rospy.loginfo("Path clear. Turning Right...")
+                state = 2
+        elif state == 1:
+            turnLeft()
+            state = 0
+        elif state == 2:
+            turnRight()
+            state = 0
         else:
             rospy.loginfo("Invalid state: %s", state)
 
@@ -60,6 +65,16 @@ def navigate():
 
 # ************************ HELPERS ************************ #
 
+def turnLeft():
+    turn90()
+
+def turnRight():
+    turn90(-1)
+
+def turn90(direction = 1):
+    publishTwistMessage(0, direction * 0.5)
+    rospy.sleep(3)
+
 # Check if obstacle detected
 def obstacleDetected():
     obstacleDetected_ = False
@@ -68,6 +83,16 @@ def obstacleDetected():
             obstacleDetected_ = True
             break
     return obstacleDetected_
+
+# Check if point cloud is empty
+def pointCloudEmpty():
+    pointCloudEmpty_ = True
+    for sensor, value in prox.items():
+        if value > 0.049 and sensor in pc_sensors:
+            pointCloudEmpty_ = False
+            break
+    
+    return pointCloudEmpty_
 
 # Check if path is clear
 def pathClear():
